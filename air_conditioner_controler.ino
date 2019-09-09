@@ -10,16 +10,19 @@ Servo myservo;
 #define min_open_duration Constant_1MIN * 30
 #define max_close_duration Constant_1HR * 24
 #define min_close_duration Constant_1MIN * 30
-#define critical_upper_temperature 28.00
-#define critical_lower_temperature 24.00
+#define critical_max_temperature 28.00
+#define critical_min_temperature 24.00
 #define array_len 60
 #define min_angle 0
 #define max_angle 180
-double humidity = 0.0; //存放讀取到的濕度變數
-double temperature = 0.0; //存放讀取到的溫度變數
-double humidity_array[array_len] = {0};
-double temperature_array[array_len] = {0};
-int start = 0; //time
+// double humidity = 0.0; //存放讀取到的濕度變數
+// double temperature = 0.0; //存放讀取到的溫度變數
+struct DHT11_datatype {
+    double humidity;
+    double temperature;
+};
+DHT11_datatype DHT11_data = {0.0, 0.0};
+unsigned long start = 0; //time
 void setup(){
     pinMode(6, OUTPUT); //設定D6為輸出
     digitalWrite(6,false); //設定D6為HDT11模組的GND
@@ -35,26 +38,22 @@ void setup(){
     // Serial.println("Type,\tstatus,\tHumidity (%),\tTemperature (C)");
     myservo.attach(9);
     reset_time();
+
+    noInterrupts (); //reset mills()
+    timer0_millis = 0; //reset mills()
+    interrupts (); //reset mills()
 }
 
 void loop(){
-    int duration = get_duration(); //time
-    if ((duration >= max_open_duration) || (duration <= max_close_duration)){
+    unsigned long duration = get_duration(); //time
+    if ((duration >= max_open_duration) || (duration >= max_close_duration)){
         do_myservo();
         return;
     }
-    if ((duration >= min_open_duration) || (duration <= min_close_duration)){
-        for(int i = 0; i < array_len; i++){
-            check_DHT11();
-            humidity_array[i] = DHT.humidity;
-            temperature_array[i] = DHT.temperature;
-            // print_DHT11();
-            delay(Constant_1SEC);
-        }
-        humidity = average(humidity_array, array_len);
-        temperature = average(temperature_array, array_len);
-        Serial.print("1 min average of humidity and temperature: \t%d\t%d", humidity, temperature);
-        if ((temperature > critical_upper_temperature) || (temperature < critical_lower_temperature)){
+    if ((duration >= min_open_duration) || (duration >= min_close_duration)){
+        DHT11_data = get_average_DHT11_data();
+        Serial.print("1 min average of humidity and temperature: \t%d\t%d", DHT11_data.humidity, DHT11_data.temperature);
+        if ((DHT11_data.temperature > critical_max_temperature) || (DHT11_data.temperature < critical_min_temperature)){
             do_myservo();
             return;
         }
@@ -64,23 +63,20 @@ void loop(){
 
 void reset_time(){
     start = millis();
+    Millis() function itself
+    // Unsigned long 32bit variable. Meaning 2^32-1 milliseconds range (no negative numbers possible).
+    // This equates to: (2^32-1) / 1000ms / 60sec / 60min / 24hr = 49.71 days.
 }
 
-int get_duration(){
+unsigned long get_duration(){
     return millis() - start;
 }
 
-int do_myservo(){
+void do_myservo(){
     reset_time();
     myservo.write(max_angle);
     delay(Constant_1SEC);
     myservo.write(min_angle);
-}
-
-void print_DHT11(){
-    Serial.print(humidity, 1); //印出小數點後1位濕度值
-    Serial.print(",\t");
-    Serial.println(temperature, 1); //印出小數點後1位溫度值
 }
 
 double average(double *arr, int len){
@@ -89,6 +85,28 @@ double average(double *arr, int len){
         sum += arr[i];
     }
     return sum/len;
+}
+
+DHT11_datatype get_average_DHT11_data(){
+    DHT11_datatype dht_data = {0.0, 0.0};
+    double humidity_array[array_len] = {0};
+    double temperature_array[array_len] = {0};
+    for(int i = 0; i < array_len; i++){
+        check_DHT11();
+        humidity_array[i] = DHT.humidity;
+        temperature_array[i] = DHT.temperature;
+        // print_DHT11();
+        delay(Constant_1SEC);
+    }
+    dht_data.humidity = average(humidity_array, array_len);
+    dht_data.temperature = average(temperature_array, array_len);
+    return dht_data;
+}
+
+void print_DHT11(){
+    Serial.print(humidity, 1); //印出小數點後1位濕度值
+    Serial.print(",\t");
+    Serial.println(temperature, 1); //印出小數點後1位溫度值
 }
 
 void check_DHT11(){
