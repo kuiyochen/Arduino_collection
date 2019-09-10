@@ -3,7 +3,7 @@
 dht DHT;
 Servo myservo;
 #define DHT11_PIN 5
-#define Constant_1SEC 1000
+#define Constant_1SEC 1000ul
 #define Constant_1MIN Constant_1SEC * 60
 #define Constant_1HR Constant_1MIN * 60
 #define max_open_duration Constant_1HR
@@ -11,12 +11,13 @@ Servo myservo;
 #define max_close_duration Constant_1HR * 24
 #define min_close_duration Constant_1MIN * 30
 #define critical_max_temperature 28.00
-#define critical_min_temperature 24.00
+#define critical_min_temperature 26.50
 #define array_len 60
-#define min_angle 0
-#define max_angle 180
-// double humidity = 0.0; //存放讀取到的濕度變數
-// double temperature = 0.0; //存放讀取到的溫度變數
+#define min_angle 60
+#define max_angle 150
+#define DHT_GND_pin 6
+#define DHT_VCC_pin 4
+#define SERVO_pin 9
 struct DHT11_datatype {
     double humidity;
     double temperature;
@@ -24,37 +25,37 @@ struct DHT11_datatype {
 DHT11_datatype DHT11_data = {0.0, 0.0};
 unsigned long start = 0; //time
 void setup(){
-    pinMode(6, OUTPUT); //設定D6為輸出
-    digitalWrite(6,false); //設定D6為HDT11模組的GND
-    pinMode(4, OUTPUT); //設定D4為輸入
-    digitalWrite(4,true); //設定D6為HDT11模組的VCC
-    pinMode(13,OUTPUT); //設定D13為輸出
-    digitalWrite(13,false); //設定D13輸出低電位，關閉LED燈
+    pinMode(DHT_GND_pin, OUTPUT);
+    digitalWrite(DHT_GND_pin,false);
+    pinMode(DHT_VCC_pin, OUTPUT);
+    digitalWrite(DHT_VCC_pin,true);
     Serial.begin(9600); //串列埠通訊鮑率9600
     Serial.println("DHT TEST PROGRAM ");
     Serial.print("LIBRARY VERSION: ");
     Serial.println(DHT_LIB_VERSION);
-    // Serial.println();
-    // Serial.println("Type,\tstatus,\tHumidity (%),\tTemperature (C)");
-    myservo.attach(9);
+    myservo.attach(SERVO_pin); // 咖啡色 = GND，紅色 = V5，黃色 = SERVO_pin
+    myservo.write(max_angle);
     reset_time();
-
-    noInterrupts (); //reset mills()
-    timer0_millis = 0; //reset mills()
-    interrupts (); //reset mills()
 }
 
 void loop(){
-    unsigned long duration = get_duration(); //time
+    unsigned long duration = 0; //time
+    duration = get_duration();
     if ((duration >= max_open_duration) || (duration >= max_close_duration)){
+        Serial.println("over_max");
         do_myservo();
+        delay(Constant_1MIN * 10 + Constant_1SEC);
         return;
     }
     if ((duration >= min_open_duration) || (duration >= min_close_duration)){
-        DHT11_data = get_average_DHT11_data();
-        Serial.print("1 min average of humidity and temperature: \t%d\t%d", DHT11_data.humidity, DHT11_data.temperature);
+        DHT11_data = get_average_DHT11_data(); // need array_len sec
+        Serial.print("1 min average of humidity and temperature: \t");
+        Serial.print(DHT11_data.humidity, 1);
+        Serial.print("\t");
+        Serial.println(DHT11_data.temperature, 1);
         if ((DHT11_data.temperature > critical_max_temperature) || (DHT11_data.temperature < critical_min_temperature)){
             do_myservo();
+            delay(Constant_1MIN * 10 + Constant_1SEC);
             return;
         }
     }
@@ -63,9 +64,9 @@ void loop(){
 
 void reset_time(){
     start = millis();
-    Millis() function itself
-    // Unsigned long 32bit variable. Meaning 2^32-1 milliseconds range (no negative numbers possible).
-    // This equates to: (2^32-1) / 1000ms / 60sec / 60min / 24hr = 49.71 days.
+    // millis() function itself
+    // Unsigned long 32bit variable. Meaning 2^32-1 milliseconds range.
+    // This equates to: (2^32-1)ms = 49.71 days.
 }
 
 unsigned long get_duration(){
@@ -74,9 +75,9 @@ unsigned long get_duration(){
 
 void do_myservo(){
     reset_time();
-    myservo.write(max_angle);
-    delay(Constant_1SEC);
     myservo.write(min_angle);
+    delay(Constant_1SEC);
+    myservo.write(max_angle);
 }
 
 double average(double *arr, int len){
@@ -93,20 +94,25 @@ DHT11_datatype get_average_DHT11_data(){
     double temperature_array[array_len] = {0};
     for(int i = 0; i < array_len; i++){
         check_DHT11();
+        if(DHT.humidity < 10.0 || DHT.temperature < 10.0){
+            i=-1;
+            Serial.println();
+            delay(Constant_1SEC);
+            continue;
+        }
         humidity_array[i] = DHT.humidity;
         temperature_array[i] = DHT.temperature;
-        // print_DHT11();
+        Serial.print("i=");
+        Serial.print(i);
+        Serial.print(",\t");
+        Serial.print(DHT.humidity, 1); //印出小數點後1位濕度值
+        Serial.print(",\t");
+        Serial.println(DHT.temperature, 1); //印出小數點後1位溫度值
         delay(Constant_1SEC);
     }
     dht_data.humidity = average(humidity_array, array_len);
     dht_data.temperature = average(temperature_array, array_len);
     return dht_data;
-}
-
-void print_DHT11(){
-    Serial.print(humidity, 1); //印出小數點後1位濕度值
-    Serial.print(",\t");
-    Serial.println(temperature, 1); //印出小數點後1位溫度值
 }
 
 void check_DHT11(){
@@ -116,7 +122,7 @@ void check_DHT11(){
     switch (chk)
     {
         case DHTLIB_OK:
-            Serial.print("OK,\t");
+            Serial.print("OK            ,\t");
             break;
         case DHTLIB_ERROR_CHECKSUM:
             Serial.print("Checksum error,\t");
