@@ -24,6 +24,9 @@ struct DHT11_datatype {
 };
 DHT11_datatype DHT11_data = {0.0, 0.0};
 unsigned long start = 0; //time
+int testing_count = 0; // < 3 means "testing"
+bool air_conditioner_state = true;
+
 void setup(){
     pinMode(DHT_GND_pin, OUTPUT);
     digitalWrite(DHT_GND_pin,false);
@@ -39,27 +42,34 @@ void setup(){
 }
 
 void loop(){
-    unsigned long duration = 0; //time
-    duration = get_duration();
-    if ((duration >= max_open_duration) || (duration >= max_close_duration)){
-        Serial.println("over_max");
+    if(testing_count < 3){
+        testing_count++;
         do_myservo();
-        delay(Constant_1MIN * 10 + Constant_1SEC);
+        delay(Constant_1SEC * 5);
         return;
-    }
-    if ((duration >= min_open_duration) || (duration >= min_close_duration)){
-        DHT11_data = get_average_DHT11_data(); // need array_len sec
-        Serial.print("1 min average of humidity and temperature: \t");
-        Serial.print(DHT11_data.humidity, 1);
-        Serial.print("\t");
-        Serial.println(DHT11_data.temperature, 1);
-        if ((DHT11_data.temperature > critical_max_temperature) || (DHT11_data.temperature < critical_min_temperature)){
+    }else{
+        unsigned long duration = 0; //time
+        duration = get_duration();
+        if ((duration >= max_open_duration && air_conditioner_state) || (duration >= max_close_duration && !air_conditioner_state)){
+            Serial.println("over_max");
             do_myservo();
             delay(Constant_1MIN * 10 + Constant_1SEC);
             return;
         }
+        if ((duration >= min_open_duration && air_conditioner_state) || (duration >= min_close_duration && !air_conditioner_state)){
+            DHT11_data = get_average_DHT11_data(); // need array_len sec
+            Serial.print("1 min average of humidity and temperature: \t");
+            Serial.print(DHT11_data.humidity, 1);
+            Serial.print("\t");
+            Serial.println(DHT11_data.temperature, 1);
+            if ((DHT11_data.temperature > critical_max_temperature) || (DHT11_data.temperature < critical_min_temperature)){
+                do_myservo();
+                delay(Constant_1MIN * 10 + Constant_1SEC);
+                return;
+            }
+        }
+        delay(Constant_1MIN * 10 + Constant_1SEC);
     }
-    delay(Constant_1MIN * 10 + Constant_1SEC);
 }
 
 void reset_time(){
@@ -78,6 +88,7 @@ void do_myservo(){
     myservo.write(min_angle);
     delay(Constant_1SEC);
     myservo.write(max_angle);
+    air_conditioner_state = !air_conditioner_state;
 }
 
 double average(double *arr, int len){
@@ -145,10 +156,4 @@ void check_DHT11(){
     }
 }
 
-/*
-  DHT11 溫濕度感測 與 電器控制
-  Youtube channel:https://www.youtube.com/user/m0923678421
-  Video:https://youtu.be/EOFC16Zlkvs
-  Blog:http://blog.xuite.net/m0923678421/development
-  Article:http://blog.xuite.net/m0923678421/development/540376849
-*/
+
