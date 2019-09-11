@@ -13,10 +13,11 @@ Servo myservo;
 #define critical_max_temperature 28.00
 #define critical_min_temperature 26.50
 #define array_len 60
-#define min_angle 60
+#define min_angle 120
 #define max_angle 150
 #define DHT_GND_pin 6
 #define DHT_VCC_pin 4
+#define LED_pin 13
 #define SERVO_pin 9
 struct DHT11_datatype {
     double humidity;
@@ -24,7 +25,7 @@ struct DHT11_datatype {
 };
 DHT11_datatype DHT11_data = {0.0, 0.0};
 unsigned long start = 0; //time
-int testing_count = 0; // < 3 means "testing"
+int testing_count = 0; // < 4 means "testing"
 bool air_conditioner_state = true;
 
 void setup(){
@@ -32,6 +33,8 @@ void setup(){
     digitalWrite(DHT_GND_pin,false);
     pinMode(DHT_VCC_pin, OUTPUT);
     digitalWrite(DHT_VCC_pin,true);
+    pinMode(LED_pin,OUTPUT); //設定D13為輸出
+    digitalWrite(LED_pin, air_conditioner_state); //設定D13輸出低電位，True:開LED燈.
     Serial.begin(9600); //串列埠通訊鮑率9600
     Serial.println("DHT TEST PROGRAM ");
     Serial.print("LIBRARY VERSION: ");
@@ -40,9 +43,8 @@ void setup(){
     myservo.write(max_angle);
     reset_time();
 }
-
 void loop(){
-    if(testing_count < 3){
+    if(testing_count < 4){
         testing_count++;
         do_myservo();
         delay(Constant_1SEC * 5);
@@ -62,7 +64,7 @@ void loop(){
             Serial.print(DHT11_data.humidity, 1);
             Serial.print("\t");
             Serial.println(DHT11_data.temperature, 1);
-            if ((DHT11_data.temperature > critical_max_temperature) || (DHT11_data.temperature < critical_min_temperature)){
+            if ((DHT11_data.temperature > critical_max_temperature && !air_conditioner_state) || (DHT11_data.temperature < critical_min_temperature && air_conditioner_state)){
                 do_myservo();
                 delay(Constant_1MIN * 10 + Constant_1SEC);
                 return;
@@ -89,6 +91,7 @@ void do_myservo(){
     delay(Constant_1SEC);
     myservo.write(max_angle);
     air_conditioner_state = !air_conditioner_state;
+    digitalWrite(LED_pin, air_conditioner_state);
 }
 
 double average(double *arr, int len){
@@ -156,4 +159,10 @@ void check_DHT11(){
     }
 }
 
-
+/*
+  DHT11 溫濕度感測 與 電器控制
+  Youtube channel:https://www.youtube.com/user/m0923678421
+  Video:https://youtu.be/EOFC16Zlkvs
+  Blog:http://blog.xuite.net/m0923678421/development
+  Article:http://blog.xuite.net/m0923678421/development/540376849
+*/
