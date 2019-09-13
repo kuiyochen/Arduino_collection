@@ -2,7 +2,6 @@
 #include <Servo.h>
 dht DHT;
 Servo myservo;
-#define DHT11_PIN 5
 #define Constant_1SEC 1000ul
 #define Constant_1MIN Constant_1SEC * 60
 #define Constant_1HR Constant_1MIN * 60
@@ -16,9 +15,10 @@ Servo myservo;
 #define min_angle 120
 #define max_angle 150
 #define DHT_GND_pin 6
+#define DHT_data_pin 5
 #define DHT_VCC_pin 4
 #define LED_pin 13
-#define SERVO_pin 9
+#define SERVO_pin 3
 struct DHT11_datatype {
     double humidity;
     double temperature;
@@ -33,14 +33,19 @@ void setup(){
     digitalWrite(DHT_GND_pin,false);
     pinMode(DHT_VCC_pin, OUTPUT);
     digitalWrite(DHT_VCC_pin,true);
+
     pinMode(LED_pin,OUTPUT); //設定D13為輸出
     digitalWrite(LED_pin, air_conditioner_state); //設定D13輸出低電位，True:開LED燈.
+
     Serial.begin(9600); //串列埠通訊鮑率9600
     Serial.println("DHT TEST PROGRAM ");
     Serial.print("LIBRARY VERSION: ");
     Serial.println(DHT_LIB_VERSION);
+
     myservo.attach(SERVO_pin); // 咖啡色 = GND，紅色 = V5，黃色 = SERVO_pin
     myservo.write(max_angle);
+    delay(Constant_1SEC * 3);
+
     reset_time();
 }
 void loop(){
@@ -95,7 +100,7 @@ void do_myservo(){
 }
 
 double average(double *arr, int len){
-    double sum =0.0;
+    double sum = 0.0;
     for(int i = 0; i < len; i++){
         sum += arr[i];
     }
@@ -132,7 +137,7 @@ DHT11_datatype get_average_DHT11_data(){
 void check_DHT11(){
     Serial.print("DHT11, \t");
     //檢查連線狀態
-    int chk = DHT.read11(DHT11_PIN);
+    int chk = DHT.read11(DHT_data_pin);
     switch (chk)
     {
         case DHTLIB_OK:
