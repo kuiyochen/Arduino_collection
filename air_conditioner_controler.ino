@@ -19,13 +19,16 @@ Servo myservo;
 #define DHT_VCC_pin 4
 #define LED_pin 13
 #define SERVO_pin 3
+#define BUTTON_GND_pin 10
+#define BUTTON_pin 11
+#define BUTTON_VCC_pin 12
 struct DHT11_datatype {
     double humidity;
     double temperature;
 };
 DHT11_datatype DHT11_data = {0.0, 0.0};
 unsigned long start = 0; //time
-int testing_count = 0; // < 4 means "testing"
+int testing_count = 0; // < 2 means "testing"
 bool air_conditioner_state = true;
 
 void setup(){
@@ -33,6 +36,16 @@ void setup(){
     digitalWrite(DHT_GND_pin,false);
     pinMode(DHT_VCC_pin, OUTPUT);
     digitalWrite(DHT_VCC_pin,true);
+
+    pinMode(BUTTON_GND_pin, OUTPUT);
+    digitalWrite(BUTTON_GND_pin, false);
+    pinMode(BUTTON_VCC_pin, OUTPUT);
+    digitalWrite(BUTTON_VCC_pin, true);
+    pinMode(BUTTON_pin, INPUT);
+
+    myservo.attach(SERVO_pin); // 咖啡色 = GND，紅色 = V5，黃色 = SERVO_pin
+    myservo.write(max_angle);
+    delay(Constant_1SEC * 3);
 
     pinMode(LED_pin,OUTPUT); //設定D13為輸出
     digitalWrite(LED_pin, air_conditioner_state); //設定D13輸出低電位，True:開LED燈.
@@ -42,14 +55,10 @@ void setup(){
     Serial.print("LIBRARY VERSION: ");
     Serial.println(DHT_LIB_VERSION);
 
-    myservo.attach(SERVO_pin); // 咖啡色 = GND，紅色 = V5，黃色 = SERVO_pin
-    myservo.write(max_angle);
-    delay(Constant_1SEC * 3);
-
     reset_time();
 }
 void loop(){
-    if(testing_count < 4){
+    if(testing_count < 2){
         testing_count++;
         do_myservo();
         delay(Constant_1SEC * 5);
@@ -60,7 +69,8 @@ void loop(){
         if ((duration >= max_open_duration && air_conditioner_state) || (duration >= max_close_duration && !air_conditioner_state)){
             Serial.println("over_max");
             do_myservo();
-            delay(Constant_1MIN * 10 + Constant_1SEC);
+            // delay(Constant_1MIN * 10 + Constant_1SEC);
+            flexibly_delay(Constant_1MIN * 10 + Constant_1SEC);
             return;
         }
         if ((duration >= min_open_duration && air_conditioner_state) || (duration >= min_close_duration && !air_conditioner_state)){
@@ -71,11 +81,25 @@ void loop(){
             Serial.println(DHT11_data.temperature, 1);
             if ((DHT11_data.temperature > critical_max_temperature && !air_conditioner_state) || (DHT11_data.temperature < critical_min_temperature && air_conditioner_state)){
                 do_myservo();
-                delay(Constant_1MIN * 10 + Constant_1SEC);
+                // delay(Constant_1MIN * 10 + Constant_1SEC);
+                flexibly_delay(Constant_1MIN * 10 + Constant_1SEC);
                 return;
             }
         }
-        delay(Constant_1MIN * 10 + Constant_1SEC);
+        // delay(Constant_1MIN * 10 + Constant_1SEC);
+        flexibly_delay(Constant_1MIN * 10 + Constant_1SEC);
+    }
+}
+
+void flexibly_delay(unsigned long dur){
+    for(unsigned long delay_start = 0, delay_duration = 0;
+        delay_duration <= dur;
+        delay_duration = millis() - delay_start){
+        if(digitalRead(BUTTON_pin) == HIGH){
+            do_myservo();
+            break;
+        }
+        delay(50);
     }
 }
 
