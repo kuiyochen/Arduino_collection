@@ -85,9 +85,9 @@ void loop(){
                 flexibly_delay(Constant_1MIN * 10 + Constant_1SEC);
                 return;
             }
-        // delay(Constant_1MIN * 10 + Constant_1SEC);
-        flexibly_delay(Constant_1MIN * 10 + Constant_1SEC);
         }
+    // delay(Constant_1MIN * 10 + Constant_1SEC);
+    flexibly_delay(Constant_1MIN * 10 + Constant_1SEC);
     }
 }
 
