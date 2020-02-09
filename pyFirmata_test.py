@@ -13,6 +13,8 @@ In2.mode = pyfirmata.OUTPUT
 In3.mode = pyfirmata.OUTPUT
 In4.mode = pyfirmata.OUTPUT
 
+period_time = 0.001
+
 def x_stop():
 	In1.write(0)
 	In2.write(0)
@@ -20,38 +22,47 @@ def y_stop():
 	In3.write(0)
 	In4.write(0)
 
-def x_left(dotime):
+def pin_speed(pin, speed):
+	pin.write(1)
+	time.sleep(period_time * speed)
+	pin.write(0)
+	# time.sleep(period_time)
+	# time.sleep(period_time * (1 - speed))
+def x_left(speed, dotime):
 	start = time.time()
+	In2.write(0)
 	while time.time() - start <= dotime:
-		In1.write(1)
-		In2.write(0)
+		pin_speed(In1, speed)
 	x_stop()
-def x_right(dotime):
+def x_right(speed, dotime):
 	start = time.time()
+	In1.write(0)
 	while time.time() - start <= dotime:
-		In1.write(0)
-		In2.write(1)
+		pin_speed(In2, speed)
 	x_stop()
-def y_left(dotime):
+def y_left(speed, dotime):
 	start = time.time()
+	In4.write(0)
 	while time.time() - start <= dotime:
-		In3.write(1)
-		In4.write(0)
+		pin_speed(In3, speed)
 	y_stop()
-def y_right(dotime):
+def y_right(speed, dotime):
 	start = time.time()
+	In3.write(0)
 	while time.time() - start <= dotime:
-		In3.write(0)
-		In4.write(1)
+		pin_speed(In4, speed)
 	y_stop()
 
 
-while True:
-	x_left(2)
-	time.sleep(2)
-	y_left(2)
-	time.sleep(2)
-	x_right(2)
-	time.sleep(2)
-	y_right(2)
-	time.sleep(2)
+if True:
+# while True:
+	for j in range(5):
+		for i in range(20):
+			x_left(3.0, 0.005)
+			y_left(12.0, 0.005)
+		time.sleep(0.3)
+	for j in range(5):
+		for i in range(20):
+			x_right(3.0, 0.005)
+			y_right(12.0, 0.005)
+		time.sleep(0.3)
