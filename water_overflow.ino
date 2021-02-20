@@ -6,6 +6,7 @@ Unistep2 stepper(8, 9, 10, 11, 4096, 1000);// IN1, IN2, IN3, IN4, 總step數, �
 #define LEDPin 13
 int water_over = 0;
 int ALL_stop = 0;
+int turn_back = 0;
 // #define BuzzerPin = 4;
 
 // int duration = 200; // 200 miliseconds
@@ -50,11 +51,21 @@ void checkStateChange() {
 
 void loop() {
   if (water_over == 0){checkStateChange();}
+  else if (turn_back == 0){
+    stepper.run();
+    if ( stepper.stepsToGo() == 0 ){ // 如果stepsToGo=0，表示步進馬達已轉完應走的step了
+      delay(500);
+      stepper.move(-2*4096);
+      //stepper.move(2*4096ul);
+      turn_back = 1;  
+      //ALL_stop = 1;
+    }
+  }
   else if (ALL_stop == 0){
     stepper.run();
     if ( stepper.stepsToGo() == 0 ){ // 如果stepsToGo=0，表示步進馬達已轉完應走的step了
       delay(500);
-      stepper.move(5*4096ul);
+      stepper.move(2*4096);
       ALL_stop = 1;
     }
   }
